@@ -1,0 +1,13 @@
+{
+  "objects": ["ostritch", "robin", "penguin"],
+  "attributes": ["bird", "swims", "flies", "wings"],
+  "incidence": [
+    ["ostritch", "wings"],
+    ["ostritch", "bird"],
+    ["robin", "bird"],
+    ["robin", "wings"],
+    ["robin", "flies"],
+    ["penguin", "swims"],
+    ["penguin", "wings"]
+  ]
+}

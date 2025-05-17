@@ -1,0 +1,30 @@
+{
+  "objects": ["alice", "bob", "charlie", "david", "eva", "frank"],
+  "attributes": [
+    "fw. alice",
+    "fw. bob",
+    "fw. charlie",
+    "fw. david",
+    "fw. eva",
+    "fw. frank"
+  ],
+  "incidence": [
+    ["alice", "fw. alice"],
+    ["alice", "fw. charlie"],
+    ["alice", "fw. eva"],
+    ["alice", "fw. frank"],
+    ["bob", "fw. bob"],
+    ["bob", "fw. charlie"],
+    ["bob", "fw. david"],
+    ["charlie", "fw. charlie"],
+    ["david", "fw. alice"],
+    ["david", "fw. david"],
+    ["david", "fw. eva"],
+    ["david", "fw. frank"],
+    ["eva", "fw. bob"],
+    ["eva", "fw. eva"],
+    ["frank", "fw. alice"],
+    ["frank", "fw. bob"],
+    ["frank", "fw. charlie"]
+  ]
+}

@@ -2,26 +2,16 @@ package main
 
 import (
 	"fmt"
-	//"pr/fcacomponents"
+	"pr/fcacomponents"
 	"pr/readwrite"
+	"strings"
 )
 
 func main() {
-	context := readwrite.Read_ctx("contexts/penguins.cxt")
-	fmt.Println(context)
-	/*
-	   premise := fcacomponents.NewSet()
-	   premise.Add("bird")
+	cxt := readwrite.ParseJSON("contexts/friends.json")
+	fmt.Println(cxt)
+	fmt.Println("The extent of \"fw. charlie\" is:", strings.Join(cxt.Extent([]string{"fw. charlie"}), ", "))
+	impl1 := fcacomponents.Implication{[]string{"fw. charlie"}, []string{"fw. bob"}}
+	fmt.Println("The implication", impl1.String(), "is", cxt.Satisfies(&impl1))
 
-	   conclusion := fcacomponents.NewSet()
-	   conclusion.Add("flies")
-
-	   tester := fcacomponents.NewSet()
-	   tester.Add("bird")
-	   tester.Add("swims")
-
-	   impl1 := fcacomponents.Implication{*premise, *conclusion}
-	   fmt.Println(tester.Satisfies(impl1))
-	   fmt.Println(impl1)
-	*/
 }
