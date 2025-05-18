@@ -8,10 +8,23 @@ import (
 )
 
 func main() {
-	cxt := readwrite.ParseJSON("contexts/friends.json")
+	cxt := readwrite.ParseJSON("contexts/birds.json")
 	fmt.Println(cxt)
-	fmt.Println("The extent of \"fw. charlie\" is:", strings.Join(cxt.Extent([]string{"fw. charlie"}), ", "))
-	impl1 := fcacomponents.Implication{[]string{"fw. charlie"}, []string{"fw. bob"}}
-	fmt.Println("The implication", impl1.String(), "is", cxt.Satisfies(&impl1))
 
+	fmt.Println("The extent of \"bird\" is", strings.Join(cxt.Extent([]string{"bird"}), ", "))
+	fmt.Println("The extent of \"flies\" is", strings.Join(cxt.Extent([]string{"flies"}), ", "))
+
+	impl1 := fcacomponents.Implication{
+		Premise:    []string{"bird"},
+		Conclusion: []string{"flies"},
+	}
+	_, res := cxt.Satisfies(&impl1) // discard the first result
+	fmt.Println(res)
+
+	impl2 := fcacomponents.Implication{
+		Premise:    []string{"bird"},
+		Conclusion: []string{"wings"},
+	}
+	_, res1 := cxt.Satisfies(&impl2)
+	fmt.Println(res1)
 }

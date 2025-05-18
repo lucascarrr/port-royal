@@ -10,10 +10,12 @@ type Implication struct {
 }
 
 type Satisfaction interface {
-	Satisfies() bool
+	Satisfies() (bool, string)
 }
 
-func (c *Context) Satisfies(i *Implication) bool {
+func (c *Context) Satisfies(i *Implication) (bool, string) {
+	var b strings.Builder
+	b.WriteString(i.String())
 	premIdx := make([]int, len(i.Premise))
 	for k, n := range i.Premise {
 		premIdx[k] = c.a2i[n]
@@ -42,10 +44,13 @@ func (c *Context) Satisfies(i *Implication) bool {
 
 	for w := range extPrem {
 		if extPrem[w]&^extCon[w] != 0 {
-			return false
+			b.WriteString(" is not satisfied by the context")
+			return false, b.String()
 		}
 	}
-	return true
+	b.WriteString(" is satisfied by the context")
+
+	return true, b.String()
 }
 
 func (i *Implication) String() string {
