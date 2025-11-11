@@ -18,7 +18,6 @@ class RankedContext(FormalContext):
         if rankings is None:
             self.rankings = [FormalContext(objects, attributes, incidence)]
         else:
-            # Optionally ensure all rankings are compatible
             for ctx in rankings:
                 if ctx.attributes != attributes:
                     raise ValueError(
@@ -31,15 +30,12 @@ class RankedContext(FormalContext):
         """Pretty-print the formal context as a cross table."""
         obj_width = max(len(o) for o in self.objects) if self.objects else 5
         attr_widths = [max(len(a), 1) for a in self.attributes]
-
-        # 1. Calculate the width for the 'RANK' column
-        # It must be wide enough for the word 'RANK' or the largest rank number
-        rank_width = 4  # Default width for "RANK"
+        rank_width = 4
+        
         if self.rankings:
             max_rank_num_width = len(str(len(self.rankings) - 1))
             rank_width = max(rank_width, max_rank_num_width)
 
-        # 2. Build the header string with correct spacing
         header = f"{'Rank':<{rank_width}} | {'Object':<{obj_width}} |"
         for a, w in zip(self.attributes, attr_widths):
             header += f"{a:>{w + 2}}"
@@ -47,11 +43,9 @@ class RankedContext(FormalContext):
         lines = [header]
         lines.append("-" * len(header))
 
-        # 3. Build data rows, aligning them with the new header
         for i in range(len(self.rankings)):
             rank = self.rankings[i]
             for o, row in zip(rank.objects, rank.incidence):
-                # Use f-string formatting for alignment
                 line = f"{i:<{rank_width}} | {o:<{obj_width}} |"
 
                 for bit, w in zip(row, attr_widths):
