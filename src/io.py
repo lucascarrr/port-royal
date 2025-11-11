@@ -1,30 +1,34 @@
 import os
 from bitarray import bitarray
-from src.context import FormalContext  # Assuming FormalContext is in src/context.py
+from src.context import FormalContext
 
 
 def load_context(file_name: str, format: str) -> FormalContext:
     """
-    Loads a formal context from a file.
+    Loads a formal context from a file located in the project's 'data' directory.
     Currently only supports the '.ctx' (ConImp) format.
     """
 
     if format.lower() != "ctx":
         raise ValueError(f"Unsupported format: '{format}'. Only 'ctx' is supported.")
 
-    if not os.path.exists(file_name):
-        raise FileNotFoundError(f"Context file not found: {file_name}")
+    data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+    file_path = os.path.join(data_dir, file_name)
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Context file not found: {os.path.abspath(file_path)}")
 
     objects: list[str] = []
     attributes: list[str] = []
     incidence: list[bitarray] = []
 
     try:
-        with open(file_name, "r", encoding="utf-8") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             if f.readline().strip() != "B":
                 raise ValueError("Invalid .ctx format: Expected 'B' on the first line.")
 
             try:
+                f.readline()
                 num_objects = int(f.readline().strip())
             except ValueError:
                 raise ValueError(
@@ -60,19 +64,15 @@ def load_context(file_name: str, format: str) -> FormalContext:
 
                 if len(line) != num_attributes:
                     raise ValueError(
-                        f"Incidence row {obj_idx} (object '{objects[obj_idx]}') \nhas incorrect length. Expected {num_attributes}, got {len(line)}."
+                        f"Incidence row {obj_idx} (object '{objects[obj_idx]}') has incorrect length. Expected {num_attributes}, got {len(line)}."
                     )
 
-                # Convert 'X'/'x' to 1 (True) and '.' (or anything else) to 0 (False)
                 row = bitarray([char.lower() == "x" for char in line])
                 incidence.append(row)
 
     except IOError as e:
-        raise IOError(f"Error reading or parsing file {file_name}: {e}")
+        raise IOError(f"Error reading or parsing file {file_path}: {e}")
     except Exception as e:
-        # Catch other potential errors like EOF
         raise RuntimeError(f"An unexpected error occurred during file parsing: {e}")
 
-    # The FormalContext __init__ will perform final validation
-    # on the consistency of the loaded lists.
     return FormalContext(objects, attributes, incidence)

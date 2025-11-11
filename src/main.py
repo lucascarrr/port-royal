@@ -1,9 +1,9 @@
 # import argparse
 from bitarray import bitarray
 
-# import sys
-# from pathlib import Path
-# from src.io import load_context
+import sys
+from pathlib import Path
+from src.io import load_context
 from src.algorithms import object_rank
 from src.context import FormalContext
 from src.implications import Implication
@@ -11,6 +11,10 @@ from src.implications import Implication
 
 def main():
     # Define context
+    ctx1 = load_context("../data/input.ctx", "ctx")
+    print(ctx1)
+    sys.exit(1)
+
     objects = ["con-18", "con-4", "con-1", "con-9", "con-17"]
     attributes = [
         "dem",
