@@ -12,10 +12,13 @@ from src.implications import Implication
 def main():
     # Define context
     ctx1 = load_context("../data/input.ctx", "ctx")
+    print(ctx1.intents_list)
     delta = [
         Implication(["dem"], ["hci"], ctx1.attributes),
-        Implication(["wpc"], ["hci"], ctx1.attributes),
+        Implication([], ["dem"], ctx1.attributes),
     ]
+    for i in delta:
+        print(i)
     rtx1 = object_rank(ctx1, delta)
     print(rtx1)
     sys.exit(1)
