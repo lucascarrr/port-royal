@@ -31,7 +31,6 @@ class Implication:
     def sat_wit(self, obj_intent: bitarray) -> tuple[bool, bool]:
         if (obj_intent & self.premise_bits) != self.premise_bits:
             return True, False
-        # Otherwise, check that it has all of B
         return (obj_intent & self.conclusion_bits) == self.conclusion_bits, True
 
     @override
