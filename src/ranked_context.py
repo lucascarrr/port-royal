@@ -28,15 +28,15 @@ class RankedContext(FormalContext):
     @override
     def __repr__(self) -> str:
         """Pretty-print the formal context as a cross table."""
-        obj_width = max(len(o) for o in self.objects) if self.objects else 5
+        obj_width = max(len(o) for o in self.objects) if self.objects else 7
         attr_widths = [max(len(a), 1) for a in self.attributes]
         rank_width = 4
-        
+
         if self.rankings:
             max_rank_num_width = len(str(len(self.rankings) - 1))
             rank_width = max(rank_width, max_rank_num_width)
 
-        header = f"{'Rank':<{rank_width}} | {'Object':<{obj_width}} |"
+        header = f"{'Rank':<{rank_width}} | {' ':<{obj_width}} |"
         for a, w in zip(self.attributes, attr_widths):
             header += f"{a:>{w + 2}}"
 
