@@ -1,25 +1,25 @@
 from itertools import chain, combinations
-from typing import override, Generator, Tuple
-
+from typing import override, Generator, Tuple, TypeVar, Generic
 from bitarray import bitarray
-
 from src.implications import Implication
 
+T = TypeVar("T", str, list[str])
 
-class FormalContext:
+
+class FormalContext(Generic[T]):
 
     def __init__(
         self,
         objects: list[str],
-        attributes: list[str],
+        attributes: list[T],
         incidence: list[bitarray] | None = None,
     ) -> None:
         self.objects: list[str] = objects
-        self.attributes: list[str] = attributes
+        self.attributes: list[T] = attributes
         self.num_objects: int = len(objects)
         self.num_attributes: int = len(attributes)
 
-        self.intents_list: list[list[str]] = []
+        self.intents_list: list[list[T]] = []
         self.extents_list: list[list[str]] = []
 
         if incidence is None:
@@ -96,7 +96,7 @@ class FormalContext:
             return []
         return [self.objects[i] for i, bit in enumerate(bits) if bit]
 
-    def _bitarray_to_attributes(self, bits: bitarray) -> list[str]:
+    def _bitarray_to_attributes(self, bits: bitarray) -> list[T]:
         """Converts an attribute bitarray to a list of attribute names."""
         if bits.count() == 0:
             return []
@@ -157,7 +157,7 @@ class FormalContext:
         self.num_objects += 1
         self._compute_all_concepts()
 
-    def add_relation(self, obj_name: str, attr_name: str) -> None:
+    def add_relation(self, obj_name: str, attr_name: T) -> None:
         try:
             obj_idx = self.objects.index(obj_name)
         except ValueError:

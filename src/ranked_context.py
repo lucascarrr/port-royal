@@ -1,13 +1,10 @@
 from typing import override
-
 from bitarray import bitarray
-
 from src.context import FormalContext
 from src.implications import Implication
-from src.conditional import Conditional
 
 
-class RankedContext(FormalContext):
+class RankedContext(FormalContext[str]):
     def __init__(
         self,
         objects: list[str],
