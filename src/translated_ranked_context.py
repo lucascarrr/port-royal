@@ -31,7 +31,6 @@ class TranslatedContext(FormalContext[list[str]]):
 
         for obj_idx in range(base_context.num_objects):
             row = bitarray(len(attributes))
-            print(base_context.objects[obj_idx])
             row.setall(0)
 
             for attr_idx, attr_list in enumerate(attributes):
@@ -50,7 +49,6 @@ class TranslatedContext(FormalContext[list[str]]):
             for obj_idx in range(sub_context.num_objects):
                 row = bitarray(len(attributes))
                 row.setall(0)
-                print(sub_context.objects[obj_idx])
 
                 for attr_idx, attr_list in enumerate(attributes):
                     has_all = all(
@@ -65,7 +63,6 @@ class TranslatedContext(FormalContext[list[str]]):
                 row = reduce(operator.or_, incidence, row)
                 to_append.append(row)
                 new_objects.append(sub_context.objects[obj_idx])
-                print(f"added object: {ranked_context.objects[obj_idx]}")
 
             for i in range(len(to_append)):
                 incidence.append(to_append[i])
