@@ -1,5 +1,7 @@
 from typing import override
+import itertools
 from bitarray import bitarray
+from src.conditional import Conditional
 from src.context import FormalContext
 from src.implications import Implication
 
@@ -40,6 +42,33 @@ class RankedContext(FormalContext[str]):
             return rank.satisfies(implication)
 
         return False
+
+    def compute_defeasible_basis(self) -> list[Conditional]:
+        """
+        returns a set of conditionals of the form {X'' -> Y'' | X'' subseteq Y''}
+        Maybe this is sound & complete w.r.t. preferential entailment from self.
+
+        """
+        include = []
+        candidates = (
+            (prem, concl)
+            for prem, concl in itertools.product(self.intents_list, self.intents_list)
+            if prem != concl
+        )
+
+        pairs = [(set(x), set(y)) for x, y in candidates]
+
+        valid_pairs = []
+        for X, Y in pairs:
+            if X.issubset(Y):
+                valid_pairs.append((X, Y))
+
+        for premise, conclusion in valid_pairs:
+            query = Conditional(premise, conclusion, self.attributes)
+            if self.satisfies(query):
+                include.append(query)
+
+        return include
 
     @override
     def __repr__(self) -> str:
