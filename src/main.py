@@ -24,7 +24,7 @@ def main():
     print(ranked_context.satisfies(defeasible_conditional))
     print(ranked_context.satisfies(defeasible_conditional_false))
     print()
-    print(ranked_context.compute_defeasible_basis())
+
     # translated_context = TranslatedContext(ranked_context)
     # print(translated_context)
 

@@ -47,6 +47,7 @@ class RankedContext(FormalContext[str]):
         """
         returns a set of conditionals of the form {X'' -> Y'' | X'' subseteq Y''}
         Maybe this is sound & complete w.r.t. preferential entailment from self.
+        I think it is not redundant
 
         """
         include = []
