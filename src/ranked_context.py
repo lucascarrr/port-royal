@@ -3,6 +3,8 @@ from typing import override
 from bitarray import bitarray
 
 from src.context import FormalContext
+from src.implications import Implication
+from src.conditional import Conditional
 
 
 class RankedContext(FormalContext):
@@ -24,6 +26,23 @@ class RankedContext(FormalContext):
                         "All rankings must share the same objects and attributes."
                     )
             self.rankings: list[FormalContext] = rankings
+
+    @override
+    def satisfies(
+        self, implication: Implication
+    ) -> bool:  # this should be conditional, but typechecker issue
+        """returns true if the conditional is satisfied by the ranked context"""
+        for rank in self.rankings:
+            if not any(
+                (object_intent & implication.premise_bits) == implication.premise_bits
+                for object_intent in (
+                    rank.object_intent(i) for i in range(rank.num_objects)
+                )
+            ):
+                continue
+            return rank.satisfies(implication)
+
+        return False
 
     @override
     def __repr__(self) -> str:

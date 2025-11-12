@@ -1,87 +1,37 @@
 # import argparse
-from bitarray import bitarray
 
-import sys
-from pathlib import Path
 from src.io import load_context
 from src.algorithms import object_rank
-from src.context import FormalContext
 from src.implications import Implication
+from src.conditional import Conditional
 
 
 def main():
-    # Define context
-    ctx1 = load_context("../data/input.ctx", "ctx")
-    print(ctx1.intents_list)
+    # load a context from ctx file
+    ctx = load_context("../data/input.ctx", "ctx")
+    print(ctx)
+
+    # there should be 8 concepts (i only care about intents right now)
+    # {}, {dem,hci}, {rep,wpc}, {dem}, {wpc}, {dem,wpc}, {dem,wpc,hci}, {dem,wpc,hci,rep}
+    print(ctx.intents_list)
+
+    # object_rank algorithm
+    # delta : objects are usually democrats & democrats are usually hci
     delta = [
-        Implication(["dem"], ["hci"], ctx1.attributes),
-        Implication([], ["dem"], ctx1.attributes),
+        Implication([], ["hci"], ctx.attributes),
     ]
-    for i in delta:
-        print(i)
-    rtx1 = object_rank(ctx1, delta)
-    print(rtx1)
-    sys.exit(1)
+    rctx = object_rank(ctx, delta)
+    print(rctx)
 
-    objects = ["con-18", "con-4", "con-1", "con-9", "con-17"]
-    attributes = [
-        "dem",
-        "rep",
-        "hci",
-        "wpc",
-        "abr",
-        "pff",
-        "esa",
-        "rgs",
-        "ast",
-        "anc",
-        "mxm",
-        "imm",
-        "scc",
-        "edu",
-        "rts",
-        "crm",
-        "dfe",
-        "aas",
-    ]
+    # test defeasible entailment
+    # c1: usually democrats are hci
+    c1 = Conditional(["dem"], ["hci"], rctx.attributes)
 
-    incidence = [
-        bitarray("101010001110001011"),
-        bitarray("100110010000101001"),
-        bitarray("010101110001011101"),
-        bitarray("010101110000011101"),
-        bitarray("101010010101110001"),
-    ]
+    print(ctx.satisfies(c1))  # false
+    print(rctx.satisfies(c1))  # true
 
-    ctx = FormalContext(objects, attributes, incidence)
-    i1 = Implication(["imm"], ["crm"], ctx.attributes)
-    i2 = Implication(["wpc"], ["scc"], ctx.attributes)
-    delta = [i1, i2]
-    print(f"Unranked Context:\n\n{ctx}\n")
-    print(f"Object rank with delta ={delta}\n")
-    print(object_rank(ctx, delta))
-
-    # # Implications
-    # i1 = Implication(["a", "c"], ["b"], ctx.attributes)
-    # print(i1.sat_wit(bitarray("011")))
-    # print(i1.sat_wit(bitarray("111")))
-    # print(i1.sat_wit(bitarray("101")))
-    # i2 = Implication(["b"], ["a"])
-    # i3 = Implication(["a"], ["c"])
-    # print(i1.sat_wit(bitarray("010"), ["a", "b", "c"]))
-
-    # # Check per object
-    # for o_idx, obj in enumerate(objects):
-    #     print(f"{obj}:")
-    #     print("  i1:", i1.satisfied(ctx.object_intent(o_idx), ctx.attributes))
-    #     print("  i2:", i2.satisfied(ctx.object_intent(o_idx), ctx.attributes))
-    #     print("  i3:", i3.satisfied(ctx.object_intent(o_idx), ctx.attributes))
-
-    # # Check globally
-    # print("\nGlobal satisfaction:")
-    # print("i1:", ctx.satisfies(i1))
-    # print("i2:", ctx.satisfies(i2))
-    # print("i3:", ctx.satisfies(i3))
+    # TODO
+    # defeasible
 
 
 if __name__ == "__main__":

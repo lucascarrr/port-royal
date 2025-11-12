@@ -186,7 +186,7 @@ class FormalContext:
         return extent
 
     def satisfies(self, implication: Implication) -> bool:
-        """Check whether all objects in the context satisfy the implication."""
+        """returns True if the implication is satisfied by the context"""
         return all(
             implication.satisfied(self.object_intent(i))
             for i in range(self.num_objects)
