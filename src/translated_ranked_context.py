@@ -1,4 +1,6 @@
 from bitarray import bitarray
+import operator
+from functools import reduce
 from typing import override
 from src.context import FormalContext
 from src.ranked_context import RankedContext
@@ -40,6 +42,7 @@ class TranslatedContext(FormalContext[list[str]]):
 
             incidence.append(row)
 
+        to_append = []
         for sub_context_indx in range(1, len(ranked_context.rankings)):
             sub_context = ranked_context.rankings[sub_context_indx]
             for obj_idx in range(sub_context.num_objects):
@@ -53,8 +56,13 @@ class TranslatedContext(FormalContext[list[str]]):
                         ]
                         for attr in attr_list
                     )
+
                     row[attr_idx] = has_all
 
+                row = reduce(operator.or_, incidence, row)
+                to_append.append(row)
+
+            for row in to_append:
                 incidence.append(row)
 
         return incidence
