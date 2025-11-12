@@ -67,6 +67,24 @@ Rank |      |  a  b  c  d
 2    | obj1 |  X         
 ```
 
+### Defeasible Conditionals
+
+Defeasible conditionals are implemented as `Conditional` type, which is a subclass of `Implication`. Really they are the same thing, but it is useful to have a distinction conceptually.
+A conditional may be satisfied by a ranked context; but there is no notion of a set of attributes satisfying a conditional.
+
+```python
+defeasible_conditional = Conditional(["b"], ["a"], ranked_context.attributes)
+defeasible_conditional_false = Conditional(["c"], ["d"], ranked_context.attributes)
+
+print(ranked_context.satisfies(defeasible_conditional))
+print(ranked_context.satisfies(defeasible_conditional_false))
+```
+
+```bash
+True
+False
+```
+
 ### Translated Context
 
 A ranked contexet may be _translated_ into a `TranslatedContext`, which is a subclass of `FormalContext`.

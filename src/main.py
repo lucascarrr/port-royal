@@ -16,6 +16,10 @@ def main():
     ]
     ranked_context = object_rank(example_context, delta)
     print(ranked_context)
+    defeasible_conditional = Conditional(["b"], ["a"], ranked_context.attributes)
+    defeasible_conditional_false = Conditional(["c"], ["d"], ranked_context.attributes)
+    print(ranked_context.satisfies(defeasible_conditional))
+    print(ranked_context.satisfies(defeasible_conditional_false))
     translated_context = TranslatedContext(ranked_context)
     print(translated_context)
 
