@@ -18,7 +18,6 @@ class FormalContext(Generic[T]):
         self.attributes: list[T] = attributes
         self.num_objects: int = len(objects)
         self.num_attributes: int = len(attributes)
-
         self.intents_list: list[list[T]] = []
         self.extents_list: list[list[str]] = []
 

@@ -1,5 +1,4 @@
 from typing import override
-
 from bitarray import bitarray
 
 

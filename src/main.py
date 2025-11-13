@@ -8,22 +8,20 @@ from src.translated_ranked_context import TranslatedContext
 
 
 def main():
-    example_context = load_context("../data/basis_test.ctx", "ctx")
+    example_context = load_context("../data/example_sergei_talk.ctx", "ctx")
     print()
     print(example_context)
     print()
     delta = [
-        Implication(["b"], ["a"], example_context.attributes),
-        Implication([], ["c"], example_context.attributes),
+        Implication(["D"], ["a"], example_context.attributes),
+        Implication(["w"], ["D"], example_context.attributes),
+        Implication(["w", "p"], ["R"], example_context.attributes),
     ]
     ranked_context = object_rank(example_context, delta)
     print(ranked_context)
     print()
-    defeasible_conditional = Conditional(["b"], ["a"], ranked_context.attributes)
-    defeasible_conditional_false = Conditional(["c"], ["d"], ranked_context.attributes)
-    print(ranked_context.satisfies(defeasible_conditional))
-    print(ranked_context.satisfies(defeasible_conditional_false))
     print()
+    print(ranked_context.compute_defeasible_basis())
 
     # translated_context = TranslatedContext(ranked_context)
     # print(translated_context)

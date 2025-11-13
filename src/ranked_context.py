@@ -45,7 +45,7 @@ class RankedContext(FormalContext[str]):
 
     def compute_defeasible_basis(self) -> list[Conditional]:
         """
-        returns a set of conditionals of the form {X'' -> Y'' | X'' subseteq Y''}
+        returns a set of conditionals of the form {X'' -> Y'' | X'' subset Y''}
         Maybe this is sound & complete w.r.t. preferential entailment from self.
         I think it is not redundant
 
