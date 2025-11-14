@@ -1,6 +1,4 @@
 from bitarray import bitarray
-import operator
-from functools import reduce
 from typing import override
 from src.context import FormalContext
 from src.ranked_context import RankedContext
@@ -60,9 +58,15 @@ class TranslatedContext(FormalContext[list[str]]):
 
                     row[attr_idx] = has_all
 
-                row = reduce(operator.or_, incidence, row)
+                # Inherit attributes from the same object in the base rank (rank 0)
+                # This makes attributes cumulative across ranks for the same object
+                obj_name = sub_context.objects[obj_idx]
+                if obj_name in base_context.objects:
+                    base_obj_idx = base_context.objects.index(obj_name)
+                    row |= incidence[base_obj_idx]
+
                 to_append.append(row)
-                new_objects.append(sub_context.objects[obj_idx])
+                new_objects.append(obj_name)
 
             for i in range(len(to_append)):
                 incidence.append(to_append[i])

@@ -1,4 +1,3 @@
-from itertools import chain, combinations
 from typing import override, Generator, Tuple, TypeVar, Generic
 from bitarray import bitarray
 from src.implications import Implication
@@ -18,8 +17,14 @@ class FormalContext(Generic[T]):
         self.attributes: list[T] = attributes
         self.num_objects: int = len(objects)
         self.num_attributes: int = len(attributes)
-        self.intents_list: list[list[T]] = []
-        self.extents_list: list[list[str]] = []
+
+        # Lazy-loaded concept storage
+        self._intents_list: list[frozenset[T]] | None = None
+        self._extents_list: list[frozenset[str]] | None = None
+        self._concepts_dirty: bool = True
+
+        # Cached attribute extents for performance
+        self._attribute_extents_cache: list[bitarray] | None = None
 
         if incidence is None:
             self.incidence: list[bitarray] = [
@@ -37,21 +42,54 @@ class FormalContext(Generic[T]):
                     )
             self.incidence = incidence
 
-        self._compute_all_concepts()
+        # Initialize attribute extent cache
+        self._build_attribute_extent_cache()
+
+    @property
+    def intents_list(self) -> list[frozenset[T]]:
+        """Lazily compute and cache all concept intents."""
+        if self._concepts_dirty or self._intents_list is None:
+            self._compute_all_concepts()
+        return self._intents_list  # type: ignore
+
+    @property
+    def extents_list(self) -> list[frozenset[str]]:
+        """Lazily compute and cache all concept extents."""
+        if self._concepts_dirty or self._extents_list is None:
+            self._compute_all_concepts()
+        return self._extents_list  # type: ignore
+
+    def _build_attribute_extent_cache(self) -> None:
+        """Build cache of attribute extents for fast lookup."""
+        self._attribute_extents_cache = []
+        for attr_idx in range(self.num_attributes):
+            extent = bitarray(self.num_objects)
+            for obj_idx in range(self.num_objects):
+                extent[obj_idx] = self.incidence[obj_idx][attr_idx]
+            self._attribute_extents_cache.append(extent)
+
+    def _invalidate_caches(self) -> None:
+        """Invalidate all caches when context is mutated."""
+        self._concepts_dirty = True
+        self._intents_list = None
+        self._extents_list = None
+        # Rebuild attribute extent cache
+        self._build_attribute_extent_cache()
 
     def _compute_all_concepts(self) -> None:
         """
         Internal method to generate and store all concepts.
-        Converts bitarray concepts into lists of strings.
+        Converts bitarray concepts into frozensets.
         """
-        self.intents_list = []
-        self.extents_list = []
+        self._intents_list = []
+        self._extents_list = []
 
         for extent_bits, intent_bits in self.generate_all_concepts():
+            # Convert the bitarrays to frozensets before storing
+            self._extents_list.append(self._bitarray_to_objects(extent_bits))
+            self._intents_list.append(self._bitarray_to_attributes(intent_bits))
 
-            # Convert the bitarrays to lists of strings before storing
-            self.extents_list.append(self._bitarray_to_objects(extent_bits))
-            self.intents_list.append(self._bitarray_to_attributes(intent_bits))
+        self._concepts_dirty = False
 
     def generate_all_concepts(self) -> Generator[Tuple[bitarray, bitarray], None, None]:
         """
@@ -89,17 +127,13 @@ class FormalContext(Generic[T]):
 
         return bitarray("1" * self.num_attributes)
 
-    def _bitarray_to_objects(self, bits: bitarray) -> list[str]:
-        """Converts an object bitarray to a list of object names."""
-        if bits.count() == 0:
-            return []
-        return [self.objects[i] for i, bit in enumerate(bits) if bit]
+    def _bitarray_to_objects(self, bits: bitarray) -> frozenset[str]:
+        """Converts an object bitarray to a frozenset of object names."""
+        return frozenset(self.objects[i] for i, bit in enumerate(bits) if bit)
 
-    def _bitarray_to_attributes(self, bits: bitarray) -> list[T]:
-        """Converts an attribute bitarray to a list of attribute names."""
-        if bits.count() == 0:
-            return []
-        return [self.attributes[i] for i, bit in enumerate(bits) if bit]
+    def _bitarray_to_attributes(self, bits: bitarray) -> frozenset[T]:
+        """Converts an attribute bitarray to a frozenset of attribute names."""
+        return frozenset(self.attributes[i] for i, bit in enumerate(bits) if bit)
 
     def prime_objects(self, objects: bitarray) -> bitarray:
         """Compute the intent of a set of objects (all common attributes)."""
@@ -140,6 +174,7 @@ class FormalContext(Generic[T]):
     def set_relation(self, obj_idx: int, attr_idx: int, value: bool = True) -> None:
         """Set whether object obj_idx has attribute attr_idx."""
         self.incidence[obj_idx][attr_idx] = value
+        self._invalidate_caches()
 
     def add_object(self, name: str, incidence_row: bitarray | None = None) -> None:
         """Add a new object (row) to the context."""
@@ -154,7 +189,7 @@ class FormalContext(Generic[T]):
         self.objects.append(name)
         self.incidence.append(incidence_row)
         self.num_objects += 1
-        self._compute_all_concepts()
+        self._invalidate_caches()
 
     def add_relation(self, obj_name: str, attr_name: T) -> None:
         try:
@@ -167,7 +202,6 @@ class FormalContext(Generic[T]):
             raise ValueError(f"Attribute '{attr_name}' not in context.")
 
         self.set_relation(obj_idx, attr_idx, True)
-        self._compute_all_concepts()
 
     def has_attribute(self, obj_idx: int, attr_idx: int) -> bool:
         """Check if object obj_idx has attribute attr_idx."""
@@ -179,10 +213,9 @@ class FormalContext(Generic[T]):
 
     def attribute_extent(self, attr_idx: int) -> bitarray:
         """Get all objects that have a given attribute."""
-        extent = bitarray(self.num_objects)
-        for i in range(self.num_objects):
-            extent[i] = self.incidence[i][attr_idx]
-        return extent
+        if self._attribute_extents_cache is None:
+            self._build_attribute_extent_cache()
+        return self._attribute_extents_cache[attr_idx].copy()  # type: ignore
 
     def satisfies(self, implication: Implication) -> bool:
         """returns True if the implication is satisfied by the context"""

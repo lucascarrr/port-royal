@@ -1,13 +1,14 @@
-from typing import override
+from typing import override, Iterable
 from bitarray import bitarray
 
 
 class Implication:
     def __init__(
-        self, premise: list[str], conclusion: list[str], attributes: list[str]
+        self, premise: Iterable[str], conclusion: Iterable[str], attributes: list[str]
     ) -> None:
-        self.premise: list[str] = premise
-        self.conclusion: list[str] = conclusion
+        # Store as frozensets (mathematically correct, hashable, prevents duplicates)
+        self.premise: frozenset[str] = frozenset(premise)
+        self.conclusion: frozenset[str] = frozenset(conclusion)
         self.attributes: list[str] = attributes
         self.premise_bits = bitarray(len(attributes))
         self.premise_bits.setall(0)
@@ -34,6 +35,6 @@ class Implication:
 
     @override
     def __repr__(self) -> str:
-        premise_str = ", ".join(self.premise)
-        conclusion_str = ", ".join(self.conclusion)
+        premise_str = ", ".join(sorted(self.premise))
+        conclusion_str = ", ".join(sorted(self.conclusion))
         return f"({premise_str} -> {conclusion_str})"
