@@ -1,15 +1,16 @@
-from src.context import FormalContext
-from bitarray import bitarray
-from src.io import load_context
-from src.algorithms import object_rank
-from src.implications import Implication
-from src.conditional import Conditional
-from src.translated_ranked_context import TranslatedContext
+from src import (
+    FormalContext,
+    load_context,
+    object_rank,
+    Implication,
+    Conditional,
+    TranslatedContext,
+)
 
 
 def main():
     # Load the example context
-    example_context = load_context("../data/example_sergei_talk.ctx", "ctx")
+    example_context = load_context("example_sergei_talk.ctx", "ctx")
     print("=" * 60)
     print("FORMAL CONTEXT")
     print("=" * 60)
