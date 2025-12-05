@@ -4,11 +4,12 @@ from src.context import FormalContext
 from src.ranked_context import RankedContext
 
 
-class TranslatedContext(FormalContext[list[str]]):
+class TranslatedContext(FormalContext):
     def __init__(self, *args, **kwargs) -> None:
         if len(args) == 1 and hasattr(args[0], "objects"):
             ranked_context: RankedContext = args[0]
-            attributes = ranked_context.intents_list
+            # Use concept intents from the underlying context (rank 0)
+            attributes = ranked_context.rankings[0].intents_list
             incidence, objects = self.make_incidence(ranked_context, attributes)
             super().__init__(objects, attributes, incidence)
         elif len(args) == 3:
@@ -23,54 +24,45 @@ class TranslatedContext(FormalContext[list[str]]):
     def make_incidence(
         self, ranked_context: RankedContext, attributes: list[list[str]]
     ) -> tuple[list[bitarray], list[str]]:
-        base_context: FormalContext[str] = ranked_context.rankings[0]
         incidence: list[bitarray] = []
         new_objects: list[str] = []
 
-        for obj_idx in range(base_context.num_objects):
-            row = bitarray(len(attributes))
-            row.setall(0)
+        # Track which attributes are satisfied by ANY object in lower ranks (cumulative)
+        # This represents the attributes that are "true in better/more normal worlds"
+        cumulative_satisfies = bitarray(len(attributes))
+        cumulative_satisfies.setall(0)
 
-            for attr_idx, attr_list in enumerate(attributes):
-                has_all: bool = all(
-                    base_context.incidence[obj_idx][base_context.attributes.index(attr)]
-                    for attr in attr_list
-                )
-                row[attr_idx] = has_all
+        # Process each rank in order (0, 1, 2, ...)
+        for rank_idx, context in enumerate(ranked_context.rankings):
+            # Track what THIS rank satisfies (before inheritance)
+            current_rank_satisfies = bitarray(len(attributes))
+            current_rank_satisfies.setall(0)
 
-            new_objects.append(base_context.objects[obj_idx])
-            incidence.append(row)
-
-        to_append = []
-        for sub_context_indx in range(1, len(ranked_context.rankings)):
-            sub_context: FormalContext[str] = ranked_context.rankings[sub_context_indx]
-            for obj_idx in range(sub_context.num_objects):
+            for obj_idx in range(context.num_objects):
+                obj_name = context.objects[obj_idx]
                 row = bitarray(len(attributes))
                 row.setall(0)
 
+                # Check if this object at this rank satisfies each attribute
                 for attr_idx, attr_list in enumerate(attributes):
                     has_all = all(
-                        sub_context.incidence[obj_idx][
-                            sub_context.attributes.index(attr)
-                        ]
+                        context.incidence[obj_idx][context.attributes.index(attr)]
                         for attr in attr_list
                     )
+                    if has_all:
+                        row[attr_idx] = 1
+                        current_rank_satisfies[attr_idx] = 1
 
-                    row[attr_idx] = has_all
+                # Inherit from ANY object in lower ranks (0..rank_idx-1)
+                # If any object in a better world satisfies an attribute, all objects in
+                # worse worlds inherit it
+                row |= cumulative_satisfies
 
-                # Inherit attributes from the same object in the base rank (rank 0)
-                # This makes attributes cumulative across ranks for the same object
-                obj_name = sub_context.objects[obj_idx]
-                if obj_name in base_context.objects:
-                    base_obj_idx = base_context.objects.index(obj_name)
-                    row |= incidence[base_obj_idx]
-
-                to_append.append(row)
+                incidence.append(row)
                 new_objects.append(obj_name)
 
-            for i in range(len(to_append)):
-                incidence.append(to_append[i])
-            to_append = []
+            # Update cumulative: add what this rank satisfies
+            cumulative_satisfies |= current_rank_satisfies
 
         return incidence, new_objects
 

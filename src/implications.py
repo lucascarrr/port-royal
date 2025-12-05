@@ -33,6 +33,15 @@ class Implication:
             return True, False
         return (obj_intent & self.conclusion_bits) == self.conclusion_bits, True
 
+    def __eq__(self, other):
+        if not isinstance(other, Implication):
+            return False
+        return (self.premise == other.premise and
+                self.conclusion == other.conclusion)
+
+    def __hash__(self):
+        return hash((self.premise, self.conclusion))
+
     @override
     def __repr__(self) -> str:
         premise_str = ", ".join(sorted(self.premise))

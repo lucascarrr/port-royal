@@ -1,104 +1,238 @@
 # Port Royal
 
-##
+A Python library for Formal Concept Analysis (FCA) with support for preferential semantics, defeasible reasoning, and ranked contexts.
 
-### Input
+## Overview
 
-A formal context in burgmeister format (see `./data/` for examples) may be loaded by calling, for e.g.
+Port Royal provides tools for working with formal contexts and attribute implications, with extensions for non-monotonic reasoning:
 
-```python
-example_context = load_context("../data/input.ctx", "ctx")
-print(example_context)
-```
+- **Formal Contexts**: Create and manipulate cross-tables of objects and attributes
+- **Concept Lattices**: Compute all formal concepts (extents and intents) using the NextClosure algorithm
+- **Implications**: Work with attribute implications and compute the canonical (Duquenne-Guigues) basis
+- **Ranked Contexts**: Partition objects by how well they satisfy a set of defeasible implications
+- **Defeasible Conditionals**: Query conditionals under preferential semantics
+- **Translated Contexts**: Transform ranked contexts for reasoning about typicality
+
+## Installation
 
 ```bash
+pip install bitarray
+```
+
+## Quick Start
+
+### Loading a Context
+
+Formal contexts can be loaded from `.ctx` files (Burmeister format):
+
+```python
+from src import load_context
+
+context = load_context("input.ctx", "ctx")
+print(context)
+```
+
+```
         a  b  c  d
 ------------------
-obj1 |  X         
-obj2 |  X  X      
-obj3 |        X   
+obj1 |  X
+obj2 |  X  X
+obj3 |        X
 obj4 |        X  X
 ```
 
-### Implications
+### Computing Concepts
 
-Attribute implications are created with three arguments.
+Access all formal concepts via the `intents_list` and `extents_list` properties:
 
 ```python
-example_implication = Implication(["a", "b"], ["c"], example_context.attributes)
+# Get all concept intents (closed attribute sets)
+for intent in context.intents_list:
+    print(intent)
+
+# Get all concept extents (closed object sets)
+for extent in context.extents_list:
+    print(extent)
+
+# Compute the closure of an attribute set
+from bitarray import bitarray
+attrs = context._attributes_to_bitarray(frozenset(["a"]))
+closure = context.closure(attrs)
+print(context._bitarray_to_attributes(closure))
 ```
 
-Corresponds to the implication `{a,b} -> {c}` defined over the set of attributes from `example_context`. You may query whether a _context_ satisfies an implication:
+### Attribute Implications
+
+Create and check implications:
 
 ```python
-example_context.satisfies(example_implication)
+from src import Implication
+
+# Create an implication: {a, b} -> {c}
+impl = Implication(["a", "b"], ["c"], context.attributes)
+
+# Check if the context satisfies the implication
+context.satisfies(impl)  # True if all objects satisfy it
+
+# Check if a specific object satisfies it
+impl.satisfied(context.incidence[0])  # Check first object
 ```
 
-Or whether an implication is satisfied by an object (intent):
+### Canonical Basis
+
+Compute the Duquenne-Guigues basis (minimal complete set of implications):
 
 ```python
-example_implication.satisfied(example_context.incidence[0]) # incidence[0] is the intent of object[0]
+basis = context.get_canonical_basis()
+for impl in basis:
+    print(impl)
 ```
 
-Sets of implications are just lists of `Implication` type.
+### Object Ranking
 
-### Ranked Context
-
-`RankedContext` is a subclass of `FormalContext`.
-It maintains the original (unranked context) but adds a list `rankings: list[FormalContext]` which store each partition.
-A ranked context may be constructed by calling the `object_rank: RankedContext` method from `algorithms`.
+Given a set of defeasible implications, partition objects into ranks based on how "typical" they are:
 
 ```python
+from src import object_rank, Implication
+
+# Define defeasible rules
 delta = [
-    Implication(["a"], ["b"], example_context.attributes),
-    Implication([], ["c"], example_context.attributes),
+    Implication(["a"], ["b"], context.attributes),  # a's typically have b
+    Implication([], ["c"], context.attributes),     # typically c
 ]
 
-ranked_context = object_rank(example_context, delta)
+# Rank objects: rank 0 = most typical, higher = less typical
+ranked_context = object_rank(context, delta)
 print(ranked_context)
 ```
 
-```bash
+```
 Rank |      |  a  b  c  d
 -------------------------
-0    | obj3 |        X   
+0    | obj3 |        X
 0    | obj4 |        X  X
-1    | obj2 |  X  X      
-2    | obj1 |  X         
+1    | obj2 |  X  X
+2    | obj1 |  X
 ```
+
+Objects in rank 0 satisfy all implications. Objects are promoted when they witness (provide a counterexample to) an implication that is then removed.
 
 ### Defeasible Conditionals
 
-Defeasible conditionals are implemented as `Conditional` type, which is a subclass of `Implication`. Really they are the same thing, but it is useful to have a distinction conceptually.
-A conditional may be satisfied by a ranked context; but there is no notion of a set of attributes satisfying a conditional.
+Query conditionals under preferential semantics:
 
 ```python
-defeasible_conditional = Conditional(["b"], ["a"], ranked_context.attributes)
-defeasible_conditional_false = Conditional(["c"], ["d"], ranked_context.attributes)
+from src import Conditional
 
-print(ranked_context.satisfies(defeasible_conditional))
-print(ranked_context.satisfies(defeasible_conditional_false))
+# Create a conditional: b |~ a (b's typically have a)
+cond = Conditional(["b"], ["a"], ranked_context.attributes)
+
+# Check if the ranked context satisfies it
+# (looks at the most typical objects with b)
+ranked_context.satisfies(cond)
 ```
 
-```bash
-True
-False
-```
+### Translated Contexts
 
-### Translated Context
-
-A ranked contexet may be _translated_ into a `TranslatedContext`, which is a subclass of `FormalContext`.
+Transform a ranked context into a classical context for reasoning about typicality inheritance:
 
 ```python
-translated_context = TranslatedContext(ranked_context)
-print(translated_context)
+from src import TranslatedContext
+
+translated = TranslatedContext(ranked_context)
+print(translated)
 ```
 
+The translated context uses concept intents as attributes and implements inheritance: if any object in a lower (better) rank satisfies an attribute, all objects in higher ranks inherit it.
+
+## Interactive REPL
+
+Port Royal includes an interactive command-line interface:
+
 ```bash
-       []  ['c']  ['c', 'd']  ['a']  ['a', 'b']  ['a', 'b', 'c', 'd'] 
-----------------------------------------------------------------------
-obj3 | X     X                                                        
-obj4 | X     X        X                                               
-obj2 | X     X        X         X        X                            
-obj1 | X     X        X         X        X                            
+python main.py
+```
+
+Available commands:
+
+| Command | Description |
+|---------|-------------|
+| `load <file>` | Load a context from `data/<file>` |
+| `show` | Display the current context |
+| `info` | Show context statistics |
+| `intents` | List all concept intents |
+| `extents` | List all concept extents |
+| `closure <attrs>` | Compute closure of comma-separated attributes |
+| `extent <attrs>` | Get objects with given attributes |
+| `intent <objs>` | Get attributes of given objects |
+| `impl <P> -> <C>` | Add an implication |
+| `impls` | List current implications |
+| `rank` | Create ranked context from implications |
+| `satisfies <P> -> <C>` | Check if implication holds |
+| `cond <P> \|~ <C>` | Check conditional (ranked context) |
+| `basis` | Compute canonical basis |
+| `defeasible-basis` | Compute defeasible basis |
+| `save <file>` | Save context to file |
+
+## File Format
+
+Port Royal uses the Burmeister `.ctx` format:
+
+```
+B
+
+4
+4
+
+obj1
+obj2
+obj3
+obj4
+a
+b
+c
+d
+X...
+XX..
+..X.
+..XX
+```
+
+- Line 1: `B` (format identifier)
+- Line 2: empty
+- Line 3: number of objects
+- Line 4: number of attributes
+- Line 5: empty
+- Following lines: object names, then attribute names
+- Final lines: incidence matrix (`X` = has attribute, `.` = doesn't)
+
+## LaTeX Export
+
+Export contexts to LaTeX using the `fca.sty` format:
+
+```python
+from src.latex_export import export_to_latex, export_context_to_file
+
+# Get LaTeX string
+latex = export_to_latex(context, label="ctx:example", name="Example Context")
+
+# Or save directly to file
+export_context_to_file(context, "output.tex")
+```
+
+## Project Structure
+
+```
+port-royal/
+├── main.py                 # Interactive REPL
+├── src/
+│   ├── context.py          # FormalContext class
+│   ├── implications.py     # Implication class
+│   ├── conditional.py      # Conditional class (defeasible)
+│   ├── ranked_context.py   # RankedContext class
+│   ├── translated_ranked_context.py  # TranslatedContext class
+│   ├── algorithms.py       # object_rank algorithm
+│   ├── io.py               # File I/O (load/save)
+│   └── latex_export.py     # LaTeX export utilities
+└── data/                   # Example context files
 ```

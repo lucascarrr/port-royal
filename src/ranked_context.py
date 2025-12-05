@@ -6,7 +6,7 @@ from src.context import FormalContext
 from src.implications import Implication
 
 
-class RankedContext(FormalContext[str]):
+class RankedContext(FormalContext):
     def __init__(
         self,
         objects: list[str],
@@ -15,6 +15,7 @@ class RankedContext(FormalContext[str]):
         rankings: list[FormalContext] | None = None,
     ) -> None:
         super().__init__(objects, attributes, incidence)
+        defeasible_basis: list[Conditional] = []
 
         if rankings is None:
             self.rankings = [FormalContext(objects, attributes, incidence)]
@@ -59,6 +60,7 @@ class RankedContext(FormalContext[str]):
 
         """
         include = []
+        # print(self.intents_list)
         for premise, conclusion in itertools.combinations(self.intents_list, 2):
             if premise < conclusion:  # premise is proper subset of conclusion
                 query = Conditional(premise, conclusion.union(premise), self.attributes)
@@ -69,7 +71,23 @@ class RankedContext(FormalContext[str]):
                 if self.satisfies(query):
                     include.append(query)
 
+        self.defeasible_basis = include
         return include
+
+    def entailed(self, query: Conditional) -> bool:
+        premise_closed = self.closure(self._attributes_to_bitarray(query.premise))
+        concl_closed = self.closure(self._attributes_to_bitarray(query.conclusion))
+        premise = self._bitarray_to_attributes(premise_closed)
+        concl = self._bitarray_to_attributes(concl_closed)
+
+        newq = Conditional(premise, concl.union(premise), self.attributes)
+        print(newq)
+        if (
+            Conditional(premise, concl.union(premise), self.attributes)
+            in self.defeasible_basis
+        ):
+            return True
+        return False
 
     @override
     def __repr__(self) -> str:

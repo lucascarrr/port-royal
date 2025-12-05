@@ -39,6 +39,8 @@ def object_rank(
 
         unranked_objects -= to_remove
 
+        for impl in witnessed:
+            print(f"Removing {impl} on rank {len(ranks)}")
         delta = [impl for impl in delta if impl not in witnessed]
         ranks.append(current_rank)
 
