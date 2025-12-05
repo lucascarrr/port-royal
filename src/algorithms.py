@@ -6,20 +6,22 @@ from src.ranked_context import RankedContext
 def object_rank(
     input_context: FormalContext, delta: list[Implication]
 ) -> RankedContext:
-    unranked_objects = input_context.objects.copy()
+    unranked_objects = set(input_context.objects)
+    obj_to_idx = {obj: idx for idx, obj in enumerate(input_context.objects)}
+
     ranks = []
-    while unranked_objects != []:
+    while unranked_objects:
         current_rank = FormalContext([], input_context.attributes, [])
-        witnessed = []
-        to_remove = []
+        witnessed = set()
+        to_remove = set()
 
         for g in unranked_objects:
-            g_idx = input_context.objects.index(g)
+            g_idx = obj_to_idx[g]
             g_intent = input_context.incidence[g_idx]
             # print(f"considering object: {g}")
 
             remove = True
-            witnessed_by_this_object = []
+            witnessed_by_this_object = set()
             for impl in delta:
                 sat, wit = impl.sat_wit(g_intent)
                 if not sat:
@@ -27,19 +29,18 @@ def object_rank(
                     remove = False
                 if wit:
                     # print(f"Object {g} witnesses {impl}")
-                    witnessed_by_this_object.append(impl)
+                    witnessed_by_this_object.add(impl)
 
             if remove:
                 current_rank.add_object(g, g_intent)
                 # print(f"Object {g} added to rank: {len(ranks)}")
-                to_remove.append(g)
-                for impl in witnessed_by_this_object:
-                    if impl not in witnessed:
-                        witnessed.append(impl)
+                to_remove.add(g)
+                witnessed.update(witnessed_by_this_object)
 
-        for g in to_remove:
-            unranked_objects.remove(g)
+        unranked_objects -= to_remove
 
+        for impl in witnessed:
+            print(f"Removing {impl} on rank {len(ranks)}")
         delta = [impl for impl in delta if impl not in witnessed]
         ranks.append(current_rank)
 

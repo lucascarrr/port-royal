@@ -6,7 +6,7 @@ from src.context import FormalContext
 from src.implications import Implication
 
 
-class RankedContext(FormalContext[str]):
+class RankedContext(FormalContext):
     def __init__(
         self,
         objects: list[str],
@@ -15,6 +15,7 @@ class RankedContext(FormalContext[str]):
         rankings: list[FormalContext] | None = None,
     ) -> None:
         super().__init__(objects, attributes, incidence)
+        defeasible_basis: list[Conditional] = []
 
         if rankings is None:
             self.rankings = [FormalContext(objects, attributes, incidence)]
@@ -27,21 +28,29 @@ class RankedContext(FormalContext[str]):
             self.rankings: list[FormalContext] = rankings
 
     @override
-    def satisfies(
-        self, implication: Implication
-    ) -> bool:  # this should be conditional, but typechecker issue
-        """returns true if the conditional is satisfied by the ranked context"""
-        for rank in self.rankings:
-            if not any(
-                (object_intent & implication.premise_bits) == implication.premise_bits
-                for object_intent in (
-                    rank.object_intent(i) for i in range(rank.num_objects)
-                )
-            ):
-                continue
-            return rank.satisfies(implication)
-
-        return False
+    def satisfies(self, implication: Implication) -> bool:
+        """
+        Dispatches based on implication type:
+        - If Conditional: uses ranked context semantics
+        - If Implication: delegates to classical context semantics
+        """
+        # Check if it's specifically a Conditional (not just an Implication)
+        if isinstance(implication, Conditional):
+            # Ranked context semantics: check first rank with premise
+            for rank in self.rankings:
+                if not any(
+                    (object_intent & implication.premise_bits)
+                    == implication.premise_bits
+                    for object_intent in (
+                        rank.object_intent(i) for i in range(rank.num_objects)
+                    )
+                ):
+                    continue
+                return rank.satisfies(implication)
+            return False
+        else:
+            # Classical semantics: all objects must satisfy
+            return super().satisfies(implication)
 
     def compute_defeasible_basis(self) -> list[Conditional]:
         """
@@ -51,25 +60,34 @@ class RankedContext(FormalContext[str]):
 
         """
         include = []
-        candidates = (
-            (prem, concl)
-            for prem, concl in itertools.product(self.intents_list, self.intents_list)
-            if prem != concl
-        )
+        # print(self.intents_list)
+        for premise, conclusion in itertools.combinations(self.intents_list, 2):
+            if premise < conclusion:  # premise is proper subset of conclusion
+                query = Conditional(premise, conclusion.union(premise), self.attributes)
+                if self.satisfies(query):
+                    include.append(query)
+            elif conclusion < premise:  # conclusion is proper subset of premise
+                query = Conditional(conclusion, premise, self.attributes)
+                if self.satisfies(query):
+                    include.append(query)
 
-        pairs = [(set(x), set(y)) for x, y in candidates]
-
-        valid_pairs = []
-        for X, Y in pairs:
-            if X.issubset(Y):
-                valid_pairs.append((X, Y))
-
-        for premise, conclusion in valid_pairs:
-            query = Conditional(premise, conclusion, self.attributes)
-            if self.satisfies(query):
-                include.append(query)
-
+        self.defeasible_basis = include
         return include
+
+    def entailed(self, query: Conditional) -> bool:
+        premise_closed = self.closure(self._attributes_to_bitarray(query.premise))
+        concl_closed = self.closure(self._attributes_to_bitarray(query.conclusion))
+        premise = self._bitarray_to_attributes(premise_closed)
+        concl = self._bitarray_to_attributes(concl_closed)
+
+        newq = Conditional(premise, concl.union(premise), self.attributes)
+        print(newq)
+        if (
+            Conditional(premise, concl.union(premise), self.attributes)
+            in self.defeasible_basis
+        ):
+            return True
+        return False
 
     @override
     def __repr__(self) -> str:
