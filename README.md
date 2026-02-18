@@ -11,7 +11,6 @@ Port Royal provides tools for working with formal contexts and attribute implica
 - **Implications**: Work with attribute implications and compute the canonical (Duquenne-Guigues) basis
 - **Ranked Contexts**: Partition objects by how well they satisfy a set of defeasible implications
 - **Defeasible Conditionals**: Query conditionals under preferential semantics
-- **Translated Contexts**: Transform ranked contexts for reasoning about typicality
 
 ## Installation
 
@@ -23,12 +22,12 @@ pip install bitarray
 
 ### Loading a Context
 
-Formal contexts can be loaded from `.ctx` files (Burmeister format):
+Formal contexts can be loaded from `.ctx` or `.cxt` files (Burmeister format):
 
 ```python
-from src import load_context
+from portroyal import load_context
 
-context = load_context("input.ctx", "ctx")
+context = load_context("input.ctx")
 print(context)
 ```
 
@@ -43,15 +42,15 @@ obj4 |        X  X
 
 ### Computing Concepts
 
-Access all formal concepts via the `intents_list` and `extents_list` properties:
+Access all formal concepts via the `intents` and `extents` properties:
 
 ```python
 # Get all concept intents (closed attribute sets)
-for intent in context.intents_list:
+for intent in context.intents:
     print(intent)
 
 # Get all concept extents (closed object sets)
-for extent in context.extents_list:
+for extent in context.extents:
     print(extent)
 
 # Compute the closure of an attribute set
@@ -66,7 +65,7 @@ print(context._bitarray_to_attributes(closure))
 Create and check implications:
 
 ```python
-from src import Implication
+from portroyal import Implication
 
 # Create an implication: {a, b} -> {c}
 impl = Implication(["a", "b"], ["c"], context.attributes)
@@ -93,16 +92,16 @@ for impl in basis:
 Given a set of defeasible implications, partition objects into ranks based on how "typical" they are:
 
 ```python
-from src import object_rank, Implication
+from portroyal import object_rank, Implication
 
 # Define defeasible rules
-delta = [
+implications = [
     Implication(["a"], ["b"], context.attributes),  # a's typically have b
     Implication([], ["c"], context.attributes),     # typically c
 ]
 
 # Rank objects: rank 0 = most typical, higher = less typical
-ranked_context = object_rank(context, delta)
+ranked_context = object_rank(context, implications)
 print(ranked_context)
 ```
 
@@ -122,7 +121,7 @@ Objects in rank 0 satisfy all implications. Objects are promoted when they witne
 Query conditionals under preferential semantics:
 
 ```python
-from src import Conditional
+from portroyal import Conditional
 
 # Create a conditional: b |~ a (b's typically have a)
 cond = Conditional(["b"], ["a"], ranked_context.attributes)
@@ -131,19 +130,6 @@ cond = Conditional(["b"], ["a"], ranked_context.attributes)
 # (looks at the most typical objects with b)
 ranked_context.satisfies(cond)
 ```
-
-### Translated Contexts
-
-Transform a ranked context into a classical context for reasoning about typicality inheritance:
-
-```python
-from src import TranslatedContext
-
-translated = TranslatedContext(ranked_context)
-print(translated)
-```
-
-The translated context uses concept intents as attributes and implements inheritance: if any object in a lower (better) rank satisfies an attribute, all objects in higher ranks inherit it.
 
 ## Interactive REPL
 
@@ -172,11 +158,12 @@ Available commands:
 | `cond <P> \|~ <C>` | Check conditional (ranked context) |
 | `basis` | Compute canonical basis |
 | `defeasible-basis` | Compute defeasible basis |
+| `rational-concepts` | Enumerate all rational concepts |
 | `save <file>` | Save context to file |
 
 ## File Format
 
-Port Royal uses the Burmeister `.ctx` format:
+Port Royal uses the Burmeister `.cxt` / `.ctx` format:
 
 ```
 B
@@ -206,33 +193,22 @@ XX..
 - Following lines: object names, then attribute names
 - Final lines: incidence matrix (`X` = has attribute, `.` = doesn't)
 
-## LaTeX Export
-
-Export contexts to LaTeX using the `fca.sty` format:
-
-```python
-from src.latex_export import export_to_latex, export_context_to_file
-
-# Get LaTeX string
-latex = export_to_latex(context, label="ctx:example", name="Example Context")
-
-# Or save directly to file
-export_context_to_file(context, "output.tex")
-```
-
 ## Project Structure
 
 ```
 port-royal/
-├── main.py                 # Interactive REPL
-├── src/
+├── main.py                 # Entry point
+├── portroyal/
+│   ├── __init__.py         # Public API
 │   ├── context.py          # FormalContext class
-│   ├── implications.py     # Implication class
-│   ├── conditional.py      # Conditional class (defeasible)
+│   ├── implication.py      # Implication + Conditional classes
 │   ├── ranked_context.py   # RankedContext class
-│   ├── translated_ranked_context.py  # TranslatedContext class
 │   ├── algorithms.py       # object_rank algorithm
 │   ├── io.py               # File I/O (load/save)
-│   └── latex_export.py     # LaTeX export utilities
+│   └── cli/
+│       ├── __init__.py     # REPL core + dispatch
+│       ├── context_commands.py   # load, save, show, info, list, reset
+│       ├── fca_commands.py       # intents, extents, closure, basis
+│       └── ranking_commands.py   # impl, rank, cond, defeasible-basis
 └── data/                   # Example context files
 ```

@@ -1,6 +1,6 @@
-from typing import override, Generator, Tuple
+from typing import override, Generator
 from bitarray import bitarray
-from src.implications import Implication
+from portroyal.implication import Implication
 
 
 class FormalContext:
@@ -16,8 +16,8 @@ class FormalContext:
         self.attributes_bits: bitarray = bitarray("1" * len(attributes))
         self.num_objects: int = len(objects)
         self.num_attributes: int = len(attributes)
-        self._intents_list: list[frozenset[str]] | None = None
-        self._extents_list: list[frozenset[str]] | None = None
+        self._intents: list[frozenset[str]] | None = None
+        self._extents: list[frozenset[str]] | None = None
         self._concepts_dirty: bool = True
         self._attribute_extents_cache: list[bitarray] | None = None
         self._canonical_basis: list[Implication] | None = None
@@ -41,24 +41,24 @@ class FormalContext:
         self._build_attribute_extent_cache()
 
     @property
-    def intents_list(self) -> list[frozenset[str]]:
+    def intents(self) -> list[frozenset[str]]:
         """Lazily compute and cache all concept intents."""
-        if self._concepts_dirty or self._intents_list is None:
+        if self._concepts_dirty or self._intents is None:
             self._compute_all_concepts()
-        return self._intents_list  # type: ignore
+        return self._intents  # type: ignore
 
     @property
-    def extents_list(self) -> list[frozenset[str]]:
+    def extents(self) -> list[frozenset[str]]:
         """Lazily compute and cache all concept extents."""
-        if self._concepts_dirty or self._extents_list is None:
+        if self._concepts_dirty or self._extents is None:
             self._compute_all_concepts()
-        return self._extents_list  # type: ignore
+        return self._extents  # type: ignore
 
     def _build_attribute_extent_cache(self) -> None:
         """Build cache of attribute extents for fast lookup."""
         self._attribute_extents_cache = []
         for attr_idx in range(self.num_attributes):
-            extent = bitarray(self.num_objects)
+            extent: bitarray = bitarray(self.num_objects)
             for obj_idx in range(self.num_objects):
                 extent[obj_idx] = self.incidence[obj_idx][attr_idx]
             self._attribute_extents_cache.append(extent)
@@ -66,36 +66,29 @@ class FormalContext:
     def _invalidate_caches(self) -> None:
         """Invalidate all caches when context is mutated."""
         self._concepts_dirty = True
-        self._intents_list = None
-        self._extents_list = None
+        self._intents = None
+        self._extents = None
         self._canonical_basis = None
-        # Rebuild attribute extent cache
         self._build_attribute_extent_cache()
 
     def _compute_all_concepts(self) -> None:
-        """
-        Internal method to generate and store all concepts.
-        Converts bitarray concepts into frozensets.
-        """
-        self._intents_list = []
-        self._extents_list = []
+        """Generate and store all concepts, converting bitarrays to frozensets."""
+        self._intents = []
+        self._extents = []
 
         for extent_bits, intent_bits in self.generate_all_concepts():
-            # Convert the bitarrays to frozensets before storing
-            self._extents_list.append(self._bitarray_to_objects(extent_bits))
-            self._intents_list.append(self._bitarray_to_attributes(intent_bits))
+            self._extents.append(self._bitarray_to_objects(extent_bits))
+            self._intents.append(self._bitarray_to_attributes(intent_bits))
 
         self._concepts_dirty = False
 
-    def generate_all_concepts(self) -> Generator[Tuple[bitarray, bitarray], None, None]:
-        """
-        The pairs are (extent, intent) bitarray objects.
-        """
-        current_intent = self.closure(bitarray("0" * self.num_attributes))
-        current_extent = self.prime_attributes(current_intent)
+    def generate_all_concepts(self) -> Generator[tuple[bitarray, bitarray], None, None]:
+        """Yield all (extent, intent) bitarray pairs using NextClosure."""
+        current_intent: bitarray = self.closure(bitarray("0" * self.num_attributes))
+        current_extent: bitarray = self.prime_attributes(current_intent)
         yield current_extent, current_intent
 
-        top_intent = bitarray("1" * self.num_attributes)
+        top_intent: bitarray = bitarray("1" * self.num_attributes)
 
         while current_intent != top_intent:
             current_intent = self._next_intent(current_intent)
@@ -103,23 +96,23 @@ class FormalContext:
             yield current_extent, current_intent
 
     def _next_intent(self, intent: bitarray) -> bitarray:
-        temp_intent = intent.copy()
+        temp_intent: bitarray = intent.copy()
 
         for i in range(self.num_attributes - 1, -1, -1):
             if temp_intent[i] == 1:
-                temp_intent[i] = 0  # "unset" the bit
+                temp_intent[i] = 0
             else:
-                candidate_basis = temp_intent.copy()
+                candidate_basis: bitarray = temp_intent.copy()
                 candidate_basis[i] = 1
 
-                new_intent = self.closure(candidate_basis)
+                new_intent: bitarray = self.closure(candidate_basis)
 
-                mask = bitarray("1" * self.num_attributes)
+                mask: bitarray = bitarray("1" * self.num_attributes)
                 for j in range(i, self.num_attributes):
                     mask[j] = 0
 
                 if (new_intent & mask) == (temp_intent & mask):
-                    return new_intent  # This is the next valid intent
+                    return new_intent
 
         return bitarray("1" * self.num_attributes)
 
@@ -128,11 +121,11 @@ class FormalContext:
         return frozenset(self.objects[i] for i, bit in enumerate(bits) if bit)
 
     def _attributes_to_bitarray(self, attribute_set: frozenset[str]) -> bitarray:
-        """Converts an attribute set to a bitarray"""
-        result = bitarray(self.num_attributes)
+        """Converts an attribute set to a bitarray."""
+        result: bitarray = bitarray(self.num_attributes)
         result.setall(0)
         for attr in attribute_set:
-            idx = self.attributes.index(attr)
+            idx: int = self.attributes.index(attr)
             result[idx] = 1
         return result
 
@@ -143,7 +136,7 @@ class FormalContext:
     def prime_objects(self, objects: bitarray) -> bitarray:
         """Compute the intent of a set of objects (all common attributes)."""
         if objects.count() == 0:
-            result = bitarray(self.num_attributes)
+            result: bitarray = bitarray(self.num_attributes)
             result.setall(1)
             return result
 
@@ -159,7 +152,7 @@ class FormalContext:
     def prime_attributes(self, attributes: bitarray) -> bitarray:
         """Compute the extent of a set of attributes (all objects having these attributes)."""
         if attributes.count() == 0:
-            result = bitarray(self.num_objects)
+            result: bitarray = bitarray(self.num_objects)
             result.setall(1)
             return result
 
@@ -198,11 +191,11 @@ class FormalContext:
 
     def add_relation(self, obj_name: str, attr_name: str) -> None:
         try:
-            obj_idx = self.objects.index(obj_name)
+            obj_idx: int = self.objects.index(obj_name)
         except ValueError:
             raise ValueError(f"Object '{obj_name}' not in context.")
         try:
-            attr_idx = self.attributes.index(attr_name)
+            attr_idx: int = self.attributes.index(attr_name)
         except ValueError:
             raise ValueError(f"Attribute '{attr_name}' not in context.")
 
@@ -223,7 +216,7 @@ class FormalContext:
         return self._attribute_extents_cache[attr_idx].copy()  # type: ignore
 
     def satisfies(self, implication: Implication) -> bool:
-        """returns True if the implication is satisfied by the context"""
+        """Returns True if the implication is satisfied by the context."""
         return all(
             implication.satisfied(self.object_intent(i))
             for i in range(self.num_objects)
@@ -236,26 +229,24 @@ class FormalContext:
         return self._canonical_basis
 
     def _compute_canonical_basis(self) -> None:
-        """
-        Compute the canonical (Duquenne-Guigues) basis using NextClosure on pseudo-intents.
-        """
-        L: list[Implication] = []  # List of implications (pseudo-intent -> closure)
+        """Compute the canonical (Duquenne-Guigues) basis using NextClosure on pseudo-intents."""
+        L: list[Implication] = []
         pseudo_intents: list[bitarray] = []
 
         A: bitarray = bitarray("0" * self.num_attributes)
 
         while True:
-            A_Lclosed = self._L_closure(A, pseudo_intents)
+            A_Lclosed: bitarray = self._L_closure(A, pseudo_intents)
 
             if A_Lclosed != A:
                 A = A_Lclosed
             else:
-                context_closure = self.closure(A)
+                context_closure: bitarray = self.closure(A)
                 if A != context_closure:
                     pseudo_intents.append(A.copy())
-                    premise = self._bitarray_to_attributes(A)
-                    closure = self._bitarray_to_attributes(context_closure)
-                    conclusion = closure - premise
+                    premise: frozenset[str] = self._bitarray_to_attributes(A)
+                    closure: frozenset[str] = self._bitarray_to_attributes(context_closure)
+                    conclusion: frozenset[str] = closure - premise
                     L.append(
                         Implication(
                             premise,
@@ -264,23 +255,22 @@ class FormalContext:
                         )
                     )
 
-            A = self._next_L_closed(A, pseudo_intents)
-            if A is None:
+            next_A: bitarray | None = self._next_L_closed(A, pseudo_intents)
+            if next_A is None:
                 break
+            A = next_A
 
         self._canonical_basis = L
 
     def _L_closure(self, A: bitarray, pseudo_intents: list[bitarray]) -> bitarray:
-        result = A.copy()
-        changed = True
+        result: bitarray = A.copy()
+        changed: bool = True
         while changed:
             changed = False
             for P in pseudo_intents:
-                # Check if P ⊆ result
                 if (P & result) == P:
-                    # Add closure of P to result
-                    P_closure = self.closure(P)
-                    new_result = result | P_closure
+                    P_closure: bitarray = self.closure(P)
+                    new_result: bitarray = result | P_closure
                     if new_result != result:
                         result = new_result
                         changed = True
@@ -289,22 +279,17 @@ class FormalContext:
     def _next_L_closed(
         self, A: bitarray, pseudo_intents: list[bitarray]
     ) -> bitarray | None:
-        """
-        Find the next L-closed set after A in lectic order.
-        Returns None if A is the largest (all attributes).
-        """
+        """Find the next L-closed set after A in lectic order."""
         for i in range(self.num_attributes - 1, -1, -1):
             if not A[i]:
-                candidate = A.copy()
+                candidate: bitarray = A.copy()
                 candidate[i] = 1
-                # Zero out all attributes after i
                 for j in range(i + 1, self.num_attributes):
                     candidate[j] = 0
 
-                candidate_closed = self._L_closure(candidate, pseudo_intents)
+                candidate_closed: bitarray = self._L_closure(candidate, pseudo_intents)
 
-                # Check if closure respects lectic order (no bits before i got set)
-                valid = True
+                valid: bool = True
                 for j in range(i):
                     if candidate_closed[j] and not A[j]:
                         valid = False
@@ -313,7 +298,6 @@ class FormalContext:
                 if valid:
                     return candidate_closed
             else:
-                # Unset bit i for next iteration
                 A = A.copy()
                 A[i] = 0
 
@@ -322,13 +306,13 @@ class FormalContext:
     @override
     def __repr__(self) -> str:
         """Pretty-print the formal context as a cross table."""
-        obj_width = max(len(o) for o in self.objects) if self.objects else 5
-        attr_widths = [max(len(a), 1) for a in self.attributes]
+        obj_width: int = max(len(o) for o in self.objects) if self.objects else 5
+        attr_widths: list[int] = [max(len(a), 1) for a in self.attributes]
 
-        header = " " * (obj_width + 2)
+        header: str = " " * (obj_width + 2)
         for a, w in zip(self.attributes, attr_widths):
             header += f"{a:>{w + 2}}"
-        lines = [header]
+        lines: list[str] = [header]
         lines.append("-" * len(header))
 
         if not self.objects:
@@ -336,10 +320,10 @@ class FormalContext:
             return "\n".join(lines)
 
         for o, row in zip(self.objects, self.incidence):
-            line = f"{o:<{obj_width}} |"
+            line: str = f"{o:<{obj_width}} |"
 
             for bit, w in zip(row, attr_widths):
-                mark = "X" if bit else " "
+                mark: str = "X" if bit else " "
                 line += f"{mark:>{w + 2}}"
             lines.append(line)
 
